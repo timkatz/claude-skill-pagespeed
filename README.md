@@ -222,6 +222,54 @@ Summary: 2 regressions ⚠️ | 1 improvement 🎉 | 7 unchanged
 
 *Why two preview URLs?* Shopify preview themes are inherently slower than the live site due to preview mode overhead. Comparing the live URL against a preview URL would always show false regressions. Instead, compare the **production theme in preview mode** (before) against the **development theme in preview mode** (after) for an apples-to-apples comparison that isolates the actual impact of your code changes.
 
+**Local Mode (single URL, no API needed):**
+> `/core-web-vitals --local agjeans.com`
+> or: "Run a local CWV test on agjeans.com"
+
+```
+🌐 agjeans.com — CWV: Local Measurement
+
+🖥️ Desktop (Local (Puppeteer)):
+  CWV: LCP: 0.8s 🟢 | CLS: 0.06 🟢 | FCP: 0.7s 🟢 | TTFB: 0.0s 🟢
+  Lab: TBT: 0ms 🟢 | SI: 744ms 🟢 | TTI: 1.5s 🟢
+
+📊 Data Source: Local (Puppeteer)
+```
+
+**Local Mode with Mobile (throttled 3G + CPU slowdown):**
+> `/core-web-vitals --local --mobile agjeans.com`
+> or: "Run local CWV test on agjeans.com including mobile"
+
+```
+🌐 agjeans.com — CWV: Local Measurement
+
+📱 Mobile (Local (Puppeteer)):
+  CWV: LCP: 1.3s 🟢 | CLS: 0.00 🟢 | FCP: 0.8s 🟢 | TTFB: N/A —
+  Lab: TBT: 0ms 🟢 | SI: 1078ms 🟢 | TTI: 0.8s 🟢
+🖥️ Desktop (Local (Puppeteer)):
+  CWV: LCP: 0.5s 🟢 | CLS: 0.05 🟢 | FCP: 0.5s 🟢 | TTFB: 0.0s 🟢
+  Lab: TBT: 0ms 🟢 | SI: 536ms 🟢 | TTI: 1.5s 🟢
+
+📊 Data Source: Local (Puppeteer)
+```
+
+**Local Mode Compare (two sites):**
+> `/core-web-vitals --local dyode.com, pacsun.com`
+> or: "Compare dyode.com vs pacsun.com locally"
+
+```
+⚔️ CWV Comparison: dyode.com vs pacsun.com (Local)
+
+| Metric    | dyode.com     | pacsun.com    | Winner        |
+|-----------|---------------|---------------|---------------|
+| 🖥️ LCP   | 0.8s 🟢      | 0.6s 🟢      | ✅ pacsun.com |
+| 🖥️ CLS   | 0.00 🟢      | 0.00 🟢      | Tie           |
+| 🖥️ FCP   | 0.7s 🟢      | 0.6s 🟢      | ✅ pacsun.com |
+| 🖥️ TTFB  | 0.3s 🟢      | 0.3s 🟢      | ✅ dyode.com  |
+
+Overall: pacsun.com wins 2/3 metrics
+```
+
 **Batch (multiple URLs):**
 > `/core-web-vitals dyode.com, rothys.com, allbirds.com`
 > or: "Check CWV for dyode.com, rothys.com, and allbirds.com"
