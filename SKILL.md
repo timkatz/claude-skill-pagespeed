@@ -48,15 +48,40 @@ User provides a Sheet URL. Read URLs from column A, write results to columns B-N
 
 ## Metrics Collected
 
-| Metric | Field (CrUX) | Good | Needs Improvement | Poor |
-|--------|-------------|------|-------------------|------|
-| LCP (s) | ✅ p75 | ≤ 2.5 | 2.5–4.0 | > 4.0 |
-| CLS | ✅ p75 | ≤ 0.1 | 0.1–0.25 | > 0.25 |
-| INP (ms) | ✅ p75 | ≤ 200 | 200–500 | > 500 |
-| FCP (s) | ✅ p75 | ≤ 1.8 | 1.8–3.0 | > 3.0 |
-| TTFB (s) | ✅ p75 | ≤ 0.8 | 0.8–1.8 | > 1.8 |
+### Core Web Vitals (Field-Comparable)
 
-CWV Assessment: FAST / AVERAGE / SLOW (from CrUX overall_category)
+Available in both API mode (CrUX field data) and local mode (lab measurement):
+
+| Metric | Field (CrUX) | Lab (Local) | Good | Needs Improvement | Poor |
+|--------|-------------|-------------|------|-------------------|------|
+| LCP (s) | ✅ p75 | ✅ | ≤ 2.5 | 2.5–4.0 | > 4.0 |
+| CLS | ✅ p75 | ✅ | ≤ 0.1 | 0.1–0.25 | > 0.25 |
+| FCP (s) | ✅ p75 | ✅ | ≤ 1.8 | 1.8–3.0 | > 3.0 |
+| TTFB (s) | ✅ p75 | ✅ | ≤ 0.8 | 0.8–1.8 | > 1.8 |
+
+### INP (API Mode Only)
+
+| Metric | Field (CrUX) | Lab (Local) | Good | Needs Improvement | Poor |
+|--------|-------------|-------------|------|-------------------|------|
+| INP (ms) | ✅ p75 | ❌ Not available | ≤ 200 | 200–500 | > 500 |
+
+**Why is INP not available in local mode?**
+
+INP requires `PerformanceEventTiming` entries from real user interactions. Puppeteer's synthetic events (click, keyboard, pointer) do not generate these browser API entries. This is a fundamental limitation of headless testing, not a bug.
+
+Even Google Lighthouse doesn't measure INP in lab tests — it uses TBT as a proxy instead. Local mode follows the same pattern.
+
+### Lab-Only Metrics (Local Mode)
+
+Calculated from synthetic testing, not available from CrUX field data:
+
+| Metric | Description | Good | Needs Improvement | Poor |
+|--------|-------------|------|-------------------|------|
+| TBT (ms) | Total Blocking Time — time main thread blocked by long tasks (>50ms) between FCP and TTI | ≤ 200 | 200–600 | > 600 |
+| SI (ms) | Speed Index — how quickly page contents are visually populated | ≤ 3400 | 3400–5800 | > 5800 |
+| TTI (s) | Time to Interactive — when page becomes fully interactive (5s quiet window) | ≤ 3.8 | 3.8–7.3 | > 7.3 |
+
+**CWV Assessment:** FAST / AVERAGE / SLOW (from CrUX overall_category, API mode only)
 
 ## Modes 1-4: Single, Compare, Batch, and Local
 
@@ -95,10 +120,10 @@ When `--local` is passed, the script shells out to `scripts/pagespeed-local.js` 
 **What it does:**
 1. Launches headless Chromium via Puppeteer
 2. Injects web-vitals IIFE library via `evaluateOnNewDocument` before page load
-3. Collects CWV metrics (LCP, FCP, CLS, TTFB, INP) into `window.__performanceMetrics`
-4. Calculates TBT (Total Blocking Time) from long tasks (using PerformanceObserver)
+3. Collects **CWV metrics:** LCP, FCP, CLS, TTFB (NO INP — see above)
+4. Calculates **lab metrics:** TBT, SI, TTI from long tasks and paint events (using PerformanceObserver)
 5. Waits for metrics to stabilize (5-10s after load)
-6. Forces LCP finalization by clicking body and simulating interactions
+6. Forces LCP finalization by clicking body
 7. Returns metrics in same format as API mode
 
 **Mobile mode (--mobile flag):**
@@ -107,20 +132,27 @@ When `--local` is passed, the script shells out to `scripts/pagespeed-local.js` 
 - CPU throttling: 4x slowdown
 - Mobile user agent
 
-**Output:**
-Data source labeled as "Local (Puppeteer)" vs "CrUX Field Data" or "Lighthouse Lab"
+**Output format:**
+```
+📱 Mobile (Local (Puppeteer)):
+  CWV: LCP: 4.3s 🔴 | CLS: 0.31 🔴 | FCP: 1.6s 🟢 | TTFB: 0.1s 🟢
+  Lab: TBT: 450ms 🟡 | SI: 2880ms 🟢 | TTI: 5.2s 🟡
+```
+
+Data source labeled as "Local (Puppeteer)" vs "CrUX field" or "Lab"
 
 **When to use:**
 - No PageSpeed API key available
 - Measuring sites behind auth/firewall
 - Batch measurements without API quota limits
 - Testing Shopify preview URLs (production theme vs dev theme in preview mode)
+- Get **bonus lab metrics** (TBT, SI, TTI) not available in CrUX field data
 
 **Limitations:**
-- INP often returns N/A (requires real user interactions across the page lifecycle)
+- **INP not available** — requires real user interactions (use API mode for INP)
 - Results may vary slightly between runs
 - Mobile throttling is simulated, not real device performance
-- TBT, TTI, Speed Index are approximations (not available from web-vitals library)
+- Lab metrics measure synthetic load, not real-world field performance
 
 ### Shopify Theme QA Detection
 

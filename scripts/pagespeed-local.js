@@ -6,6 +6,15 @@
  * Measures CWV locally without calling Google API.
  * Follows the pattern from Hux's production-performance-capture.js.
  * 
+ * **IMPORTANT: INP Not Supported in Local Mode**
+ * INP requires PerformanceEventTiming entries from real user interactions.
+ * Puppeteer's synthetic events (even PointerEvents via CDP) do not generate these
+ * entries in headless Chrome. This is a fundamental browser limitation.
+ * Even Google Lighthouse doesn't measure INP — it uses TBT as a proxy instead.
+ * 
+ * INP is only available via CrUX field data (API mode).
+ * Local mode provides TBT, SI, and TTI as lab-specific alternatives.
+ * 
  * Usage:
  *   node pagespeed-local.js example.com
  *   node pagespeed-local.js --mobile example.com
@@ -17,13 +26,17 @@ const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Thresholds for rating (from pagespeed-single.py)
+// Thresholds for rating (CWV + lab metrics)
 const THRESHOLDS = {
+  // Core Web Vitals (field-comparable)
   lcp:  { good: 2.5, poor: 4.0 },
   cls:  { good: 0.1, poor: 0.25 },
-  inp:  { good: 200, poor: 500 },
   fcp:  { good: 1.8, poor: 3.0 },
   ttfb: { good: 0.8, poor: 1.8 },
+  // Lab-only metrics
+  tbt:  { good: 200, poor: 600 },     // Total Blocking Time (ms)
+  si:   { good: 3400, poor: 5800 },   // Speed Index (ms)
+  tti:  { good: 3800, poor: 7300 },   // Time to Interactive (ms)
 };
 
 class LocalCWVMeasurement {
@@ -111,10 +124,11 @@ class LocalCWVMeasurement {
         window.__performanceMetrics = {
           webVitals: {},
           longTasks: [],
-          lcpCandidates: []
+          lcpCandidates: [],
+          paintEntries: []
         };
 
-        // Track long tasks for TBT
+        // Track long tasks for TBT and TTI
         if (typeof PerformanceObserver !== 'undefined') {
           const taskObserver = new PerformanceObserver((list) => {
             for (const entry of list.getEntries()) {
@@ -133,9 +147,25 @@ class LocalCWVMeasurement {
           } catch (e) {
             // Long tasks not supported
           }
+
+          // Track paint entries for Speed Index estimation
+          const paintObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+              window.__performanceMetrics.paintEntries.push({
+                name: entry.name,
+                startTime: entry.startTime
+              });
+            }
+          });
+          
+          try {
+            paintObserver.observe({ entryTypes: ['paint'] });
+          } catch (e) {
+            // Paint observer not supported
+          }
         }
 
-        // Initialize web-vitals collection
+        // Initialize web-vitals collection (NO INP)
         if (typeof webVitals !== 'undefined') {
           const captureMetric = (metric) => {
             window.__performanceMetrics.webVitals[metric.name] = {
@@ -150,7 +180,7 @@ class LocalCWVMeasurement {
           webVitals.onCLS(captureMetric, { reportAllChanges: true });
           webVitals.onTTFB(captureMetric);
           webVitals.onFID(captureMetric);
-          webVitals.onINP(captureMetric, { reportAllChanges: true });
+          // INP intentionally omitted — not measurable in synthetic tests
         }
 
         // Track LCP candidates
@@ -240,48 +270,6 @@ class LocalCWVMeasurement {
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Simulate user interactions for INP
-      this.log('🖱️ Simulating interactions for INP...');
-      try {
-        // Find clickable elements
-        const clickable = await page.evaluate(() => {
-          const elements = [];
-          const selectors = ['button:not([disabled])', '[role="button"]', '.btn', '.button'];
-          
-          selectors.forEach(selector => {
-            const els = document.querySelectorAll(selector);
-            els.forEach(el => {
-              const rect = el.getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0 && 
-                  rect.top >= 0 && rect.top < window.innerHeight) {
-                elements.push({
-                  x: rect.left + rect.width / 2,
-                  y: rect.top + rect.height / 2
-                });
-              }
-            });
-          });
-          
-          return elements.slice(0, 2); // Max 2 clicks
-        });
-
-        for (const el of clickable) {
-          await page.mouse.click(el.x, el.y);
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-        // Fallback: keyboard interaction
-        if (clickable.length === 0) {
-          await page.keyboard.press('Tab');
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      } catch (e) {
-        this.log(`⚠️ Interaction failed: ${e.message}`);
-      }
-
-      // Wait for INP to finalize
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Collect all metrics
       this.log('📊 Collecting final metrics...');
       const metrics = await page.evaluate(() => {
@@ -290,18 +278,9 @@ class LocalCWVMeasurement {
         const paint = performance.getEntriesByType('paint');
         const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
 
-        // Calculate TBT
-        let totalBlockingTime = 0;
-        if (perf.longTasks && perf.longTasks.length > 0) {
-          const fcp = paint.find(e => e.name === 'first-contentful-paint')?.startTime || 0;
-          const tti = nav ? nav.loadEventEnd : 5000;
-          
-          perf.longTasks.forEach(task => {
-            if (task.startTime >= fcp && task.startTime < tti) {
-              totalBlockingTime += task.blockingTime;
-            }
-          });
-        }
+        // Get FCP
+        const fcp = perf.webVitals?.FCP?.value || 
+          paint.find(e => e.name === 'first-contentful-paint')?.startTime || null;
 
         // Get final LCP
         let finalLCP = perf.webVitals?.LCP?.value || null;
@@ -312,24 +291,86 @@ class LocalCWVMeasurement {
           }
         }
 
-        // Calculate TTI (LCP + TBT as proxy)
-        const tti = finalLCP && totalBlockingTime !== null ? 
-          finalLCP + totalBlockingTime : null;
+        // Calculate TBT (Total Blocking Time)
+        let totalBlockingTime = 0;
+        if (perf.longTasks && perf.longTasks.length > 0 && fcp) {
+          const tti = nav ? nav.loadEventEnd : finalLCP || 10000;
+          
+          perf.longTasks.forEach(task => {
+            if (task.startTime >= fcp && task.startTime < tti) {
+              totalBlockingTime += task.blockingTime;
+            }
+          });
+        }
 
-        // Calculate Speed Index (simple approximation)
-        const fcp = perf.webVitals?.FCP?.value || 
-          paint.find(e => e.name === 'first-contentful-paint')?.startTime || null;
-        const speedIndex = fcp ? fcp * 1.8 : null;
+        // Calculate TTI (Time to Interactive)
+        // TTI = first point after FCP where there's a 5-second quiet window (no long tasks >50ms)
+        let tti = null;
+        if (fcp && perf.longTasks) {
+          const quietWindow = 5000; // 5 seconds
+          const maxTime = nav ? nav.loadEventEnd : (finalLCP || 0) + 10000;
+          
+          // Sort long tasks by start time
+          const sortedTasks = perf.longTasks
+            .filter(t => t.startTime >= fcp)
+            .sort((a, b) => a.startTime - b.startTime);
+          
+          if (sortedTasks.length === 0) {
+            // No long tasks after FCP = TTI is FCP
+            tti = fcp;
+          } else {
+            // Find first 5-second gap after the last long task
+            let lastTaskEnd = fcp;
+            let foundQuietWindow = false;
+            
+            for (let i = 0; i < sortedTasks.length; i++) {
+              const task = sortedTasks[i];
+              const gapBeforeTask = task.startTime - lastTaskEnd;
+              
+              if (gapBeforeTask >= quietWindow) {
+                // Found quiet window
+                tti = lastTaskEnd;
+                foundQuietWindow = true;
+                break;
+              }
+              
+              lastTaskEnd = task.startTime + task.duration;
+            }
+            
+            // If no quiet window found during tasks, TTI is after last task + quiet window
+            if (!foundQuietWindow) {
+              tti = lastTaskEnd;
+            }
+          }
+        }
+
+        // Calculate Speed Index (SI)
+        // Using FCP * 1.8 as approximation (Hux pattern)
+        // More sophisticated: use visual progress if available
+        let speedIndex = null;
+        if (fcp) {
+          // Simple estimation: SI ≈ FCP * 1.8
+          speedIndex = fcp * 1.8;
+          
+          // If we have FCP and LCP, interpolate
+          if (finalLCP && finalLCP > fcp) {
+            // Assume linear visual progress from FCP (10%) to LCP (100%)
+            // SI = weighted average of visual completeness over time
+            // Simplified: SI ≈ FCP + (LCP - FCP) * 0.6
+            speedIndex = fcp + (finalLCP - fcp) * 0.6;
+          }
+        }
 
         return {
+          // Core Web Vitals (field-comparable)
           lcp: finalLCP ? Math.round(finalLCP) / 1000 : null,
           fcp: fcp ? Math.round(fcp) / 1000 : null,
           cls: perf.webVitals?.CLS?.value || 0,
           ttfb: perf.webVitals?.TTFB?.value ? Math.round(perf.webVitals.TTFB.value) / 1000 : null,
-          inp: perf.webVitals?.INP?.value || null,
+          // Lab-only metrics
           tbt: Math.round(totalBlockingTime),
           tti: tti ? Math.round(tti) / 1000 : null,
-          speedIndex: speedIndex ? Math.round(speedIndex) / 1000 : null,
+          si: speedIndex ? Math.round(speedIndex) / 1000 : null,
           source: 'Local (Puppeteer)'
         };
       });
@@ -348,15 +389,22 @@ class LocalCWVMeasurement {
 // Formatting functions (matching pagespeed-single.py)
 function indicator(metric, value) {
   if (value === null || value === undefined) return '—';
-  const { good, poor } = THRESHOLDS[metric] || { good: 0, poor: 999 };
-  if (value <= good) return '🟢';
-  if (value <= poor) return '🟡';
+  const thresh = THRESHOLDS[metric];
+  if (!thresh) return '—';
+  
+  // Handle millisecond metrics (tbt, si, tti stored as seconds but thresholds in ms)
+  const compareValue = (['tbt', 'si', 'tti'].includes(metric)) ? value * 1000 : value;
+  
+  if (compareValue <= thresh.good) return '🟢';
+  if (compareValue <= thresh.poor) return '🟡';
   return '🔴';
 }
 
 function fmt(metric, value) {
   if (value === null || value === undefined) return 'N/A';
-  if (metric === 'inp') return `${Math.round(value)}ms`;
+  if (metric === 'tbt') return `${Math.round(value * 1000)}ms`;  // convert back to ms for display
+  if (metric === 'si') return `${(value * 1000).toFixed(0)}ms`;
+  if (metric === 'tti') return `${value.toFixed(1)}s`;
   if (metric === 'cls') return value.toFixed(2);
   return `${value.toFixed(1)}s`;
 }
@@ -366,13 +414,21 @@ function printSingle(url, mobile, desktop) {
   
   for (const [label, data] of [['📱 Mobile', mobile], ['🖥️ Desktop', desktop]]) {
     if (data) {
-      const metrics = ['lcp', 'cls', 'inp', 'fcp', 'ttfb'].map(k => {
+      // CWV metrics (field-comparable)
+      const cwvMetrics = ['lcp', 'cls', 'fcp', 'ttfb'].map(k => {
         const v = data[k];
-        return `${k.upper()}: ${fmt(k, v)} ${indicator(k, v)}`;
+        return `${k.toUpperCase()}: ${fmt(k, v)} ${indicator(k, v)}`;
       });
+      
+      // Lab metrics (local-only)
+      const labMetrics = ['tbt', 'si', 'tti'].map(k => {
+        const v = data[k];
+        return `${k.toUpperCase()}: ${fmt(k, v)} ${indicator(k, v)}`;
+      });
+      
       console.log(`${label} *(${data.source})*:`);
-      console.log(`  ${metrics.slice(0, 3).join(' | ')}`);
-      console.log(`  ${metrics.slice(3).join(' | ')}`);
+      console.log(`  CWV: ${cwvMetrics.join(' | ')}`);
+      console.log(`  Lab: ${labMetrics.join(' | ')}`);
     } else {
       console.log(`${label}: ❌ Measurement failed`);
     }
@@ -390,7 +446,7 @@ function printCompare(urlA, mobA, deskA, urlB, mobB, deskB) {
   for (const [prefix, dataA, dataB] of [['📱', mobA, mobB], ['🖥️', deskA, deskB]]) {
     if (!dataA || !dataB) continue;
     
-    for (const k of ['lcp', 'cls', 'inp', 'fcp', 'ttfb']) {
+    for (const k of ['lcp', 'cls', 'fcp', 'ttfb', 'tbt', 'si', 'tti']) {
       const va = dataA[k];
       const vb = dataB[k];
       const fa = va !== null ? `${fmt(k, va)} ${indicator(k, va)}` : 'N/A';
@@ -417,6 +473,36 @@ function printCompare(urlA, mobA, deskA, urlB, mobB, deskB) {
   const total = wins[urlA] + wins[urlB];
   const leader = wins[urlA] >= wins[urlB] ? urlA : urlB;
   console.log(`\n**Overall: ${leader} wins ${wins[leader]}/${total} metrics**`);
+}
+
+async function measureWithRetry(measurer, url, maxAttempts = 3, delayMs = 2000) {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (attempt > 1) {
+        console.error(`   Retry attempt ${attempt}/${maxAttempts}...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      
+      const result = await measurer.measure(url);
+      
+      if (attempt > 1) {
+        console.error(`   ✅ Succeeded on attempt ${attempt}`);
+      }
+      
+      return result;
+    } catch (error) {
+      lastError = error;
+      console.error(`   ❌ Attempt ${attempt}/${maxAttempts} failed: ${error.message}`);
+      
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
 }
 
 async function main() {
@@ -449,9 +535,9 @@ async function main() {
     console.error(`Measuring ${url} (desktop)...`);
     let desktop = null;
     try {
-      desktop = await measurer.measure(url);
+      desktop = await measureWithRetry(measurer, url);
     } catch (error) {
-      console.error(`❌ Desktop measurement failed: ${error.message}`);
+      console.error(`❌ Desktop measurement failed after all retries: ${error.message}`);
     }
     
     let mobileData = null;
@@ -460,9 +546,9 @@ async function main() {
       const mobileMeasurer = new LocalCWVMeasurement({ mobile: true, debug });
       await mobileMeasurer.init();
       try {
-        mobileData = await mobileMeasurer.measure(url);
+        mobileData = await measureWithRetry(mobileMeasurer, url);
       } catch (error) {
-        console.error(`❌ Mobile measurement failed: ${error.message}`);
+        console.error(`❌ Mobile measurement failed after all retries: ${error.message}`);
       }
     }
     
@@ -484,24 +570,21 @@ async function main() {
     );
   } else {
     console.log('\n📊 **Batch CWV Results** *(Local)*\n');
-    console.log('| Site | LCP | CLS | INP | FCP | TTFB |');
-    console.log('|------|-----|-----|-----|-----|------|');
+    console.log('| Site | LCP | CLS | FCP | TTFB | TBT | SI | TTI |');
+    console.log('|------|-----|-----|-----|------|-----|----|----|');
     for (const { url, desktop } of results) {
       if (desktop) {
-        const metrics = ['lcp', 'cls', 'inp', 'fcp', 'ttfb'].map(k => {
+        const metrics = ['lcp', 'cls', 'fcp', 'ttfb', 'tbt', 'si', 'tti'].map(k => {
           const v = desktop[k];
           return v !== null ? `${fmt(k, v)} ${indicator(k, v)}` : 'N/A';
         });
         console.log(`| ${url} | ${metrics.join(' | ')} |`);
       } else {
-        console.log(`| ${url} | ERROR | — | — | — | — |`);
+        console.log(`| ${url} | ERROR | — | — | — | — | — | — |`);
       }
     }
   }
 }
-
-// String.prototype.upper() helper for formatting
-String.prototype.upper = function() { return this.toUpperCase(); };
 
 main().catch(error => {
   console.error(`\n❌ Error: ${error.message}`);

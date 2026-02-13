@@ -44,11 +44,16 @@ API_KEY = os.environ.get("GOOGLE_PAGESPEED_API_TOKEN", "")
 TIMEOUT = 120
 
 THRESHOLDS = {
+    # Core Web Vitals (field-comparable)
     "lcp":  (2.5, 4.0),
     "cls":  (0.1, 0.25),
-    "inp":  (200, 500),
+    "inp":  (200, 500),  # API mode only
     "fcp":  (1.8, 3.0),
     "ttfb": (0.8, 1.8),
+    # Lab-only metrics (local mode)
+    "tbt":  (0.2, 0.6),   # Total Blocking Time (seconds for consistency)
+    "si":   (3.4, 5.8),   # Speed Index (seconds)
+    "tti":  (3.8, 7.3),   # Time to Interactive (seconds)
 }
 
 def indicator(metric, value):
@@ -66,12 +71,14 @@ def fmt(metric, value):
         return "N/A"
     if metric == "inp":
         return f"{int(value)}ms"
+    elif metric in ["tbt", "si"]:  # Lab metrics in seconds, display as ms
+        return f"{int(value * 1000)}ms" if isinstance(value, (int, float)) else "N/A"
     elif metric == "cls":
         return f"{value:.2f}"
     else:
         return f"{value:.1f}s"
 
-def fetch(url, strategy):
+def fetch(url, strategy, max_retries=3):
     if not url.startswith("http"):
         url = f"https://{url}"
     api_url = (
@@ -79,12 +86,24 @@ def fetch(url, strategy):
         f"?url={urllib.parse.quote(url, safe='')}&strategy={strategy}"
         f"&category=performance&key={API_KEY}"
     )
-    try:
-        req = urllib.request.Request(api_url)
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return json.loads(resp.read())
-    except Exception as e:
-        return {"error": str(e)}
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            req = urllib.request.Request(api_url)
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                data = json.loads(resp.read())
+                if "error" not in data:
+                    if attempt > 1:
+                        print(f"  ✅ Succeeded on attempt {attempt}", file=sys.stderr)
+                    return data
+                last_error = data.get("error", {}).get("message", "Unknown API error")
+        except Exception as e:
+            last_error = str(e)
+        if attempt < max_retries:
+            wait = 5 * attempt
+            print(f"  ⚠️ Attempt {attempt} failed ({last_error}), retrying in {wait}s...", file=sys.stderr)
+            import time; time.sleep(wait)
+    return {"error": last_error or "All retries failed"}
 
 def extract(data):
     le = data.get("loadingExperience", {})
@@ -120,24 +139,40 @@ def extract(data):
 CWV_EMOJI = {"FAST": "✅", "AVERAGE": "🟡", "SLOW": "🔴", "N/A": "—"}
 
 def print_single(url, mobile, desktop):
-    m_cwv = mobile["cwv"] if mobile else "ERROR"
-    d_cwv = desktop["cwv"] if desktop else "ERROR"
+    m_cwv = mobile.get("cwv", "N/A") if mobile else "ERROR"
+    d_cwv = desktop.get("cwv", "N/A") if desktop else "ERROR"
     best_cwv = m_cwv if m_cwv != "N/A" else d_cwv
     print(f"\n🌐 **{url}** — CWV: {best_cwv} {CWV_EMOJI.get(best_cwv, '❓')}\n")
     
     for label, data, emoji in [("📱 Mobile", mobile, "📱"), ("🖥️ Desktop", desktop, "🖥️")]:
         if data:
-            src = f" *({data['source']})*" if data["source"] != "CrUX field" else ""
-            metrics = []
-            for k in ["lcp", "cls", "inp", "fcp", "ttfb"]:
-                v = data[k]
-                metrics.append(f"{k.upper()}: {fmt(k, v)} {indicator(k, v) if v is not None else ''}")
+            src = f" *({data['source']})*" if data.get("source") != "CrUX field" else ""
+            is_local = data.get('source') == 'Local (Puppeteer)'
+            
+            # CWV metrics (always available)
+            cwv_metrics = []
+            for k in ["lcp", "cls", "fcp", "ttfb"]:
+                v = data.get(k)
+                cwv_metrics.append(f"{k.upper()}: {fmt(k, v)} {indicator(k, v) if v is not None else ''}")
+            
             print(f"{label}{src}:")
-            print(f"  {' | '.join(metrics[:3])}")
-            print(f"  {' | '.join(metrics[3:])}")
+            print(f"  CWV: {' | '.join(cwv_metrics)}")
+            
+            # Lab metrics (local mode only)
+            if is_local:
+                lab_metrics = []
+                for k in ["tbt", "si", "tti"]:
+                    v = data.get(k)
+                    lab_metrics.append(f"{k.upper()}: {fmt(k, v)} {indicator(k, v) if v is not None else ''}")
+                print(f"  Lab: {' | '.join(lab_metrics)}")
+            else:
+                # API mode: show INP if available
+                inp = data.get("inp")
+                if inp is not None:
+                    print(f"  INP: {fmt('inp', inp)} {indicator('inp', inp)}")
         else:
             print(f"{label}: ❌ No data available")
-    print(f"\n📊 Data: {mobile['source'] if mobile else 'N/A'} (mobile) | {desktop['source'] if desktop else 'N/A'} (desktop)")
+    print(f"\n📊 Data: {mobile.get('source') if mobile else 'N/A'} (mobile) | {desktop.get('source') if desktop else 'N/A'} (desktop)")
 
 def print_compare(url_a, a_mob, a_desk, url_b, b_mob, b_desk):
     print(f"\n⚔️ **CWV Comparison: {url_a} vs {url_b}**\n")
