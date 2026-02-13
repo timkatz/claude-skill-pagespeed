@@ -13,6 +13,16 @@ Audit website performance using Google's CrUX field data (real user metrics) and
 - `gog` CLI for Google Sheets operations (alternative to service account auth)
 - `agent-browser` CLI for web.dev scraping fallback
 
+## First Run — Environment Setup
+
+Before running any PageSpeed commands, ensure the API key is available in the environment. If the user has a `.env` file in their project root with `GOOGLE_PAGESPEED_API_TOKEN`, load it:
+
+```bash
+export $(grep -v '^#' .env | xargs)
+```
+
+Verify: `echo $GOOGLE_PAGESPEED_API_TOKEN` should output the key. If not set, ask the user to add it to their `.env` file or provide it inline via `--api-key`.
+
 ## Four Modes
 
 ### 1. Single URL
