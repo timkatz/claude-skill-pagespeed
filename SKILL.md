@@ -13,20 +13,13 @@ Audit website performance using Google's CrUX field data (real user metrics) and
 - `gog` CLI for Google Sheets operations (alternative to service account auth)
 - `agent-browser` CLI for web.dev scraping fallback
 
-## First Run — Environment Setup
+## Environment Setup
 
-Before running any PageSpeed commands, load the API key. If the user has a `.env` file:
+The scripts auto-load `.env` files from the working directory or skill root. No manual export needed.
 
-```bash
-export $(grep -v '^#' .env | xargs)
-```
+If `GOOGLE_PAGESPEED_API_TOKEN` is in a `.env` file, the scripts will find it automatically. Users can also pass `--api-key` inline.
 
-Verify the key is set (do NOT echo the actual value):
-```bash
-[ -n "$GOOGLE_PAGESPEED_API_TOKEN" ] && echo "API key is set" || echo "API key missing"
-```
-
-**⚠️ NEVER echo, print, or display the API key value. Only check if it exists.**
+**⚠️ NEVER echo, print, or display the API key value.**
 
 ## Four Modes
 
@@ -80,7 +73,11 @@ python3 scripts/pagespeed-single.py site1.com site2.com site3.com
 python3 scripts/pagespeed-single.py --api-key YOUR_KEY example.com
 ```
 
-The script outputs pre-formatted results with emoji indicators. Just run it and relay the output to the user. Do NOT write your own curl commands or inline Python — use the script.
+The script auto-loads `.env`, fetches data, and outputs pre-formatted results. **Run it in a single Bash call and relay the output.** Do NOT:
+- Check for env vars separately
+- Write your own curl commands or inline Python
+- Echo or verify the API key
+Just run the script. It handles everything.
 
 ## Mode 3: Google Sheet
 

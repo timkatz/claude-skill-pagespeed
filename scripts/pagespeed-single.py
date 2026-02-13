@@ -10,6 +10,24 @@ Usage:
 
 import json, os, sys, urllib.request, urllib.parse, argparse
 
+def _load_dotenv():
+    """Auto-load .env files from common locations."""
+    candidates = [
+        os.path.join(os.getcwd(), ".env"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            with open(path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, val = line.partition("=")
+                        val = val.strip().strip('"').strip("'")
+                        os.environ.setdefault(key.strip(), val)
+            break
+
+_load_dotenv()
 API_KEY = os.environ.get("GOOGLE_PAGESPEED_API_TOKEN", "")
 
 THRESHOLDS = {
