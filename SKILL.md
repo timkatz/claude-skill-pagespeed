@@ -73,11 +73,22 @@ python3 scripts/pagespeed-single.py site1.com site2.com site3.com
 python3 scripts/pagespeed-single.py --api-key YOUR_KEY example.com
 ```
 
-The script auto-loads `.env`, fetches data, and outputs pre-formatted results. **Run it in a single Bash call and relay the output.** Do NOT:
-- Check for env vars separately
+The script auto-loads `.env` from the working directory (searching upward). **Run from the project root in a single Bash call:**
+
+```bash
+cd /path/to/project && python3 /path/to/skills/core-web-vitals/scripts/pagespeed-single.py example.com
+```
+
+Or if the user's `.env` is elsewhere, source it first in the same command:
+
+```bash
+export $(grep -v '^#' /path/to/.env | xargs) && python3 scripts/pagespeed-single.py example.com
+```
+
+Do NOT:
+- Check for env vars in a separate Bash call (each call is a new shell)
 - Write your own curl commands or inline Python
-- Echo or verify the API key
-Just run the script. It handles everything.
+- Echo or verify the API key value
 
 ## Mode 3: Google Sheet
 

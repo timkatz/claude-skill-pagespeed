@@ -11,11 +11,21 @@ Usage:
 import json, os, sys, urllib.request, urllib.parse, argparse
 
 def _load_dotenv():
-    """Auto-load .env files from common locations."""
-    candidates = [
-        os.path.join(os.getcwd(), ".env"),
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
-    ]
+    """Auto-load .env files — search cwd, parents, skill dir, home."""
+    candidates = [os.path.join(os.getcwd(), ".env")]
+    # Walk up from cwd to find .env in parent dirs
+    d = os.getcwd()
+    for _ in range(10):
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        candidates.append(os.path.join(parent, ".env"))
+        d = parent
+    # Skill root (parent of scripts/)
+    candidates.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+    # Home dir
+    candidates.append(os.path.join(os.path.expanduser("~"), ".env"))
+    
     for path in candidates:
         if os.path.isfile(path):
             with open(path) as f:
