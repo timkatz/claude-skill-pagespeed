@@ -1,6 +1,6 @@
 ---
 name: core-web-vitals
-description: Run Google Core Web Vitals and PageSpeed audits against URLs. Use when asked to check site performance, CWV scores, LCP/CLS/INP/FCP/TTFB metrics, PageSpeed Insights, compare two sites, compare Shopify preview themes vs production, or bulk-audit URLs from a Google Sheet. Supports single URL, compare (two URLs side-by-side including Shopify theme QA), batch (multiple URLs), and Google Sheet modes with CrUX field data preferred, lab fallback, and browser scraping for errors.
+description: Run Google Core Web Vitals and PageSpeed audits against URLs. Use when asked to check site performance, CWV scores, LCP/CLS/INP/FCP/TTFB metrics, PageSpeed Insights, compare two sites, compare Shopify preview themes vs production, or bulk-audit URLs from a Google Sheet. Supports single URL, compare (two URLs side-by-side including Shopify theme QA), batch (multiple URLs), local measurement (Puppeteer, no API needed), and Google Sheet modes with CrUX field data preferred, lab fallback, and browser scraping for errors.
 ---
 
 # Core Web Vitals Skill
@@ -21,7 +21,7 @@ If `GOOGLE_PAGESPEED_API_TOKEN` is in a `.env` file, the scripts will find it au
 
 **⚠️ NEVER echo, print, or display the API key value.**
 
-## Four Modes
+## Five Modes
 
 ### 1. Single URL
 User provides one URL. Run the API, return formatted results inline.
@@ -32,7 +32,10 @@ User provides two URLs to compare. Run both, show side-by-side with winner highl
 ### 3. Batch (multiple URLs)
 User provides URLs separated by line breaks. Run each, return formatted table.
 
-### 4. Google Sheet
+### 4. Local Measurement (--local flag)
+Measure CWV locally using Puppeteer + web-vitals library. No API key needed. Supports desktop and mobile (with throttling). Use for batch measurements without API quota limits, testing auth-protected sites, or measuring Shopify preview URLs.
+
+### 5. Google Sheet
 User provides a Sheet URL. Read URLs from column A, write results to columns B-N with conditional formatting.
 
 ## Data Source Priority
@@ -55,23 +58,69 @@ User provides a Sheet URL. Read URLs from column A, write results to columns B-N
 
 CWV Assessment: FAST / AVERAGE / SLOW (from CrUX overall_category)
 
-## Modes 1-3: Single, Compare, and Batch
+## Modes 1-4: Single, Compare, Batch, and Local
 
 All handled by `scripts/pagespeed-single.py`. The script auto-detects the mode based on URL count:
 
 ```bash
-# Single URL
+# Single URL (Google API)
 python3 scripts/pagespeed-single.py example.com
 
-# Compare two URLs
+# Compare two URLs (Google API)
 python3 scripts/pagespeed-single.py site-a.com site-b.com
 
-# Batch (3+ URLs)
+# Batch (3+ URLs, Google API)
 python3 scripts/pagespeed-single.py site1.com site2.com site3.com
+
+# Local measurement (Puppeteer, no API)
+python3 scripts/pagespeed-single.py --local example.com
+
+# Local with mobile emulation
+python3 scripts/pagespeed-single.py --local --mobile example.com
+
+# Local compare mode
+python3 scripts/pagespeed-single.py --local site-a.com site-b.com
 
 # With inline API key
 python3 scripts/pagespeed-single.py --api-key YOUR_KEY example.com
 ```
+
+### Local Mode (--local flag)
+
+When `--local` is passed, the script shells out to `scripts/pagespeed-local.js` which uses Puppeteer + web-vitals library to measure CWV locally.
+
+**Prerequisites:**
+- `npm install puppeteer web-vitals` in the skill directory
+
+**What it does:**
+1. Launches headless Chromium via Puppeteer
+2. Injects web-vitals IIFE library via `evaluateOnNewDocument` before page load
+3. Collects CWV metrics (LCP, FCP, CLS, TTFB, INP) into `window.__performanceMetrics`
+4. Calculates TBT (Total Blocking Time) from long tasks (using PerformanceObserver)
+5. Waits for metrics to stabilize (5-10s after load)
+6. Forces LCP finalization by clicking body and simulating interactions
+7. Returns metrics in same format as API mode
+
+**Mobile mode (--mobile flag):**
+- Viewport: 412x823 (Pixel 4)
+- Network throttling: 3G (1.5 Mbps down, 750 Kbps up, 40ms latency)
+- CPU throttling: 4x slowdown
+- Mobile user agent
+
+**Output:**
+Data source labeled as "Local (Puppeteer)" vs "CrUX Field Data" or "Lighthouse Lab"
+
+**When to use:**
+- No PageSpeed API key available
+- Measuring sites behind auth/firewall
+- Batch measurements without API quota limits
+- Testing Shopify preview URLs (production theme vs dev theme in preview mode)
+
+**Limitations:**
+- INP often returns N/A (requires real user interactions across the page lifecycle)
+- Results may vary slightly between runs
+- Mobile throttling is simulated, not real device performance
+- TBT, TTI, Speed Index are approximations (not available from web-vitals library)
 
 ### Shopify Theme QA Detection
 

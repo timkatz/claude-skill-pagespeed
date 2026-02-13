@@ -6,9 +6,11 @@ Usage:
   python3 pagespeed-single.py site-a.com site-b.com          # compare mode
   python3 pagespeed-single.py site1.com site2.com site3.com   # batch mode
   python3 pagespeed-single.py --api-key YOUR_KEY example.com  # inline key
+  python3 pagespeed-single.py --local example.com             # local Puppeteer mode
+  python3 pagespeed-single.py --local --mobile example.com    # local mobile mode
 """
 
-import json, os, sys, urllib.request, urllib.parse, argparse
+import json, os, sys, urllib.request, urllib.parse, argparse, subprocess
 
 def _load_dotenv():
     """Auto-load .env files — search cwd, parents, skill dir, home."""
@@ -179,7 +181,32 @@ def main():
     parser.add_argument("--api-key", help="PageSpeed API key (overrides env var)")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Output raw JSON instead of formatted text")
     parser.add_argument("--timeout", type=int, default=120, help="API timeout in seconds (default: 120)")
+    parser.add_argument("--local", action="store_true", help="Use local Puppeteer measurement instead of Google API")
+    parser.add_argument("--mobile", action="store_true", help="Include mobile measurement (local mode only)")
     args = parser.parse_args()
+
+    # If --local flag is passed, shell out to pagespeed-local.js
+    if args.local:
+        import subprocess
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        local_script = os.path.join(script_dir, "pagespeed-local.js")
+        
+        if not os.path.isfile(local_script):
+            print(f"Error: Local script not found: {local_script}", file=sys.stderr)
+            print("Run: cd /home/node/clawd/skills/core-web-vitals && npm install puppeteer web-vitals", file=sys.stderr)
+            sys.exit(1)
+        
+        # Build command
+        cmd = ["node", local_script]
+        if args.mobile:
+            cmd.append("--mobile")
+        if args.json_output:
+            cmd.append("--json")
+        cmd.extend(args.urls)
+        
+        # Execute and exit with same code
+        result = subprocess.run(cmd, cwd=script_dir)
+        sys.exit(result.returncode)
 
     global API_KEY, TIMEOUT
     if args.api_key:

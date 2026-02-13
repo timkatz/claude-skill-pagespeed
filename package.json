@@ -1,0 +1,24 @@
+{
+  "name": "core-web-vitals",
+  "version": "1.0.0",
+  "description": "Audit website performance using Google's Core Web Vitals (CrUX field data) and PageSpeed Insights API. Works as a skill for Claude Code, OpenClaw, Codex, or any AI agent that supports SKILL.md.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dyodeinc/claude-skill-pagespeed.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dyodeinc/claude-skill-pagespeed/issues"
+  },
+  "homepage": "https://github.com/dyodeinc/claude-skill-pagespeed#readme",
+  "dependencies": {
+    "puppeteer": "^24.37.3",
+    "web-vitals": "^5.1.0"
+  }
+}

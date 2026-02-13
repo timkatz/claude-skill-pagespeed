@@ -7,6 +7,7 @@ Audit website performance using Google's Core Web Vitals (CrUX field data) and [
 - **Single URL** — Check one site, get formatted CWV results
 - **Compare** — Two URLs side-by-side with winner highlighted per metric
 - **Batch** — Paste multiple URLs, get results for all
+- **Local measurement** — Measure CWV locally using Puppeteer (no API quota needed)
 - **Google Sheet** — Point at a sheet with URLs in column A, auto-fills metrics with color-coded conditional formatting
 - **CrUX field data** preferred (real user metrics from Chrome UX Report)
 - **Lab data** fallback when CrUX unavailable
@@ -58,6 +59,64 @@ Audit website performance using Google's Core Web Vitals (CrUX field data) and [
 No pip dependencies required — uses Python standard library only. Requires `openssl` CLI for service account JWT signing.
 
 ## Usage
+
+### Local Mode (No API Needed)
+
+Measure Core Web Vitals locally using Puppeteer + web-vitals library. No PageSpeed API key required!
+
+**Install dependencies:**
+```bash
+cd /path/to/skills/core-web-vitals
+npm install puppeteer web-vitals
+```
+
+**Usage:**
+```bash
+# Desktop only
+python3 scripts/pagespeed-single.py --local example.com
+
+# Desktop + Mobile (with network throttling)
+python3 scripts/pagespeed-single.py --local --mobile example.com
+
+# Compare two sites
+python3 scripts/pagespeed-single.py --local site-a.com site-b.com
+
+# JSON output
+python3 scripts/pagespeed-single.py --local --json example.com
+```
+
+**Output:**
+```
+🌐 dyode.com — CWV: Local Measurement
+
+📱 Mobile (Local (Puppeteer)):
+  LCP: 4.3s 🔴 | CLS: 0.31 🔴 | INP: N/A —
+  FCP: 1.6s 🟢 | TTFB: 0.1s 🟢
+🖥️ Desktop (Local (Puppeteer)):
+  LCP: 0.6s 🟢 | CLS: 0.00 🟢 | INP: N/A —
+  FCP: 0.6s 🟢 | TTFB: 0.2s 🟢
+
+📊 Data Source: Local (Puppeteer)
+```
+
+**Features:**
+- Injects web-vitals library via `evaluateOnNewDocument` before page load
+- Collects LCP, FCP, CLS, TTFB, INP metrics
+- Calculates TBT (Total Blocking Time) from long tasks
+- Mobile emulation with 3G network throttling + 4x CPU slowdown
+- Same output format as API mode for consistency
+- Works in compare and batch modes
+
+**Why use local mode?**
+- No API quota limits
+- Faster for batch measurements (no API rate limits)
+- Test sites behind auth/firewall
+- Measure preview URLs (Shopify themes, staging environments)
+
+**Limitations:**
+- INP often returns N/A (requires real user interactions)
+- Results may vary slightly between runs
+- Mobile throttling is simulated, not real device performance
 
 ### Example Prompts
 
