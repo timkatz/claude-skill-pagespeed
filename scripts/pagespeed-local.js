@@ -412,7 +412,11 @@ function fmt(metric, value) {
 function printSingle(url, mobile, desktop) {
   console.log(`\n🌐 **${url}** — CWV: Local Measurement\n`);
   
-  for (const [label, data] of [['📱 Mobile', mobile], ['🖥️ Desktop', desktop]]) {
+  const sections = [];
+  if (mobile !== undefined) sections.push(['📱 Mobile', mobile]);  // only show if --mobile was requested
+  sections.push(['🖥️ Desktop', desktop]);
+  
+  for (const [label, data] of sections) {
     if (data) {
       // CWV metrics (field-comparable)
       const cwvMetrics = ['lcp', 'cls', 'fcp', 'ttfb'].map(k => {
@@ -577,7 +581,7 @@ async function main() {
       }
     }
     
-    results.push({ url, mobile: mobileData, desktop });
+    results.push({ url, mobile: mobile ? mobileData : undefined, desktop });
   }
   
   if (jsonOutput) {
