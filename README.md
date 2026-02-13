@@ -1,6 +1,6 @@
 # Core Web Vitals — OpenClaw Skill
 
-Audit website performance using Google's Core Web Vitals (CrUX field data) and PageSpeed Insights API. Built for [OpenClaw](https://github.com/openclaw/openclaw) agents.
+Audit website performance using Google's Core Web Vitals (CrUX field data) and PageSpeed Insights API. Works as a skill for Claude Code, OpenClaw, Codex, or any AI agent that supports SKILL.md.
 
 ## Features
 
