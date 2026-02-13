@@ -31,11 +31,12 @@ Audit website performance using Google's Core Web Vitals (CrUX field data) and P
 2. Create a project (or select existing)
 3. Enable the **PageSpeed Insights API**: [Enable here](https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com)
 4. Go to **APIs & Services → Credentials → Create Credentials → API Key**
-5. Add to your `.env` file:
+5. Copy the example env file and add your key:
+   ```bash
+   cp .env.example .env
    ```
-   GOOGLE_PAGESPEED_API_TOKEN=your_key_here
-   ```
-6. Load it: `export $(grep -v '^#' .env | xargs)`
+6. Edit `.env` and replace `your_api_key_here` with your actual key
+7. The scripts auto-load `.env` — no manual export needed
 
 ### 2. Google Sheets Access (only needed for Google Sheet mode)
 
