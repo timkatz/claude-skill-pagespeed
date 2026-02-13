@@ -75,15 +75,16 @@ python3 scripts/pagespeed-single.py --api-key YOUR_KEY example.com
 
 ### Shopify Theme QA Detection
 
-When comparing two URLs, detect if they share the same domain with a `?preview_theme_id=` parameter. If so, this is a **theme QA comparison** (not a competitor comparison). Adjust the output framing:
+When comparing two URLs, detect if they share the same domain with `?preview_theme_id=` parameters. If so, this is a **Shopify theme QA comparison** (not a competitor comparison). Adjust the output framing:
 
 - **Competitor compare** (different domains): "Who's faster?" — neutral winner per metric
-- **Theme QA** (same domain, one has preview_theme_id): "Did we regress?" — production is the baseline, flag any metric where the preview is worse
+- **Theme QA** (same domain, both have preview_theme_id): "Did we regress?" — first URL is "Before", second is "After"
 
 For theme QA, use this framing:
-- Label URLs as **"Production"** and **"Preview"** (not domain names)
-- Flag regressions with ⚠️ ("LCP regressed 0.6s — investigate before publishing")
-- Flag improvements with 🎉 ("FCP improved 0.3s")
+- Label URLs as **"Before"** (theme ID from first URL) and **"After"** (theme ID from second URL)
+- Show the delta for each metric (e.g., "+0.7s", "-5ms")
+- Flag regressions with ⚠️ ("LCP regressed 0.7s")
+- Flag improvements with 🎉 ("INP improved 5ms")
 - Summary: "X regressions, Y improvements, Z unchanged"
 - If ANY CWV metric crosses a threshold boundary (green→yellow, yellow→red), add a strong warning: "🚨 Do not publish — CWV regression detected"
 

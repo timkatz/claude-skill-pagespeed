@@ -138,25 +138,25 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
   🔄 Running browser retry on 42 error rows...
 ```
 
-**Shopify Theme QA (compare live vs preview):**
-> `/core-web-vitals brandname.com, brandname.com?preview_theme_id=123456789`
-> or: "Compare CWV for brandname.com live vs the preview theme"
+**Shopify Theme QA (compare before/after theme changes):**
+> `/core-web-vitals brandname.com?preview_theme_id=111111, brandname.com?preview_theme_id=222222`
+> or: "Compare CWV before and after theme changes for brandname.com"
 
 ```
-⚔️ CWV Comparison: brandname.com vs brandname.com?preview_theme_id=123456789
+🔍 Shopify Theme QA: brandname.com
 
-| Metric       | Live (prod)  | Preview      | Winner     |
-|--------------|-------------|--------------|------------|
-| 📱 M-LCP    | 2.1s 🟢    | 2.8s 🟡    | ✅ Live    |
-| 📱 M-CLS    | 0.05 🟢    | 0.12 🟡    | ✅ Live    |
-| 📱 M-INP    | 150ms 🟢   | 180ms 🟢   | ✅ Live    |
-| ...          |             |              |            |
+| Metric       | Before (111111) | After (222222) | Change     |
+|--------------|----------------|----------------|------------|
+| 📱 M-LCP    | 2.1s 🟢       | 2.8s 🟡       | ⚠️ +0.7s  |
+| 📱 M-CLS    | 0.05 🟢       | 0.12 🟡       | ⚠️ +0.07  |
+| 📱 M-INP    | 150ms 🟢      | 145ms 🟢      | 🎉 -5ms   |
+| ...          |                |                |            |
 
-Overall: Live wins 7/10 metrics ⚠️
-⚠️ Preview theme regressed LCP and CLS — investigate before publishing.
+Summary: 2 regressions ⚠️ | 1 improvement 🎉 | 7 unchanged
+🚨 Do not publish — CWV regression detected (LCP crossed green→yellow)
 ```
 
-*Use this in your QA workflow: before publishing a Shopify theme, compare the preview against production to catch performance regressions. Any metric going from 🟢 to 🟡/🔴 is a red flag.*
+*Use this in your QA workflow: before publishing a Shopify theme, compare the before and after preview themes to catch performance regressions. Any metric crossing a CWV threshold boundary (🟢→🟡 or 🟡→🔴) is a red flag.*
 
 ### Google Sheet Mode
 
