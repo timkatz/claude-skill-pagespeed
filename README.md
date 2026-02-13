@@ -60,6 +60,7 @@ When this skill is installed, your AI agent will automatically use it when you a
 
 **Single URL:**
 > `/core-web-vitals rothys.com`
+> or: "Check the Core Web Vitals for rothys.com"
 
 ```
 🌐 rothys.com — CWV: AVERAGE 🟡
@@ -77,6 +78,7 @@ When this skill is installed, your AI agent will automatically use it when you a
 
 **Compare two sites:**
 > `/core-web-vitals rothys.com, skims.com`
+> or: "Compare the performance of skims.com vs rothys.com"
 
 ```
 ⚔️ CWV Comparison: rothys.com vs skims.com
@@ -100,6 +102,7 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
 
 **Batch (multiple URLs):**
 > `/core-web-vitals dyode.com, rothys.com, allbirds.com`
+> or: "Check CWV for dyode.com, rothys.com, and allbirds.com"
 
 ```
 📊 Batch CWV Results
@@ -115,6 +118,7 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
 
 **Google Sheet:**
 > `/core-web-vitals https://docs.google.com/spreadsheets/d/abc123/edit`
+> or: "Run PageSpeed audits on all URLs in this sheet: https://docs.google.com/spreadsheets/d/abc123/edit"
 
 ```
 📋 Starting bulk CWV audit...
