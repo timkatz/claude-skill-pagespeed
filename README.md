@@ -59,7 +59,7 @@ No pip dependencies required — uses Python standard library only. Requires `op
 When this skill is installed, your AI agent will automatically use it when you ask about site performance:
 
 **Single URL:**
-> "Check the Core Web Vitals for rothys.com"
+> `/core-web-vitals rothys.com`
 
 ```
 🌐 rothys.com — CWV: AVERAGE 🟡
@@ -76,7 +76,7 @@ When this skill is installed, your AI agent will automatically use it when you a
 ```
 
 **Compare two sites:**
-> "Compare the performance of skims.com vs rothys.com"
+> `/core-web-vitals rothys.com, skims.com`
 
 ```
 ⚔️ CWV Comparison: rothys.com vs skims.com
@@ -99,10 +99,7 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
 ```
 
 **Batch (multiple URLs):**
-> "Check CWV for these sites:
-> dyode.com
-> rothys.com
-> allbirds.com"
+> `/core-web-vitals dyode.com, rothys.com, allbirds.com`
 
 ```
 📊 Batch CWV Results
@@ -117,7 +114,7 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
 ```
 
 **Google Sheet:**
-> "Run PageSpeed audits on all URLs in this sheet: https://docs.google.com/spreadsheets/d/abc123/edit"
+> `/core-web-vitals https://docs.google.com/spreadsheets/d/abc123/edit`
 
 ```
 📋 Starting bulk CWV audit...
