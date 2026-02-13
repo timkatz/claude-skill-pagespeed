@@ -156,7 +156,7 @@ Summary: 2 regressions ⚠️ | 1 improvement 🎉 | 7 unchanged
 🚨 Do not publish — CWV regression detected (LCP crossed green→yellow)
 ```
 
-*Use this in your QA workflow: before publishing a Shopify theme, compare the before and after preview themes to catch performance regressions. Any metric crossing a CWV threshold boundary (🟢→🟡 or 🟡→🔴) is a red flag.*
+*Why two preview URLs?* Shopify preview themes are inherently slower than the live site due to preview mode overhead. Comparing the live URL against a preview URL would always show false regressions. Instead, compare the **production theme in preview mode** (before) against the **development theme in preview mode** (after) for an apples-to-apples comparison that isolates the actual impact of your code changes.
 
 ### Google Sheet Mode
 

@@ -78,7 +78,7 @@ python3 scripts/pagespeed-single.py --api-key YOUR_KEY example.com
 When comparing two URLs, detect if they share the same domain with `?preview_theme_id=` parameters. If so, this is a **Shopify theme QA comparison** (not a competitor comparison). Adjust the output framing:
 
 - **Competitor compare** (different domains): "Who's faster?" — neutral winner per metric
-- **Theme QA** (same domain, both have preview_theme_id): "Did we regress?" — first URL is "Before", second is "After"
+- **Theme QA** (same domain, both have preview_theme_id): "Did we regress?" — first URL is "Before" (production theme in preview mode), second is "After" (development theme in preview mode). Both must be preview URLs for apples-to-apples comparison since Shopify preview mode adds inherent overhead vs the live site.
 
 For theme QA, use this framing:
 - Label URLs as **"Before"** (theme ID from first URL) and **"After"** (theme ID from second URL)
