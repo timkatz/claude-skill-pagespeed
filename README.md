@@ -138,6 +138,26 @@ CWV: rothys AVERAGE 🟡 vs skims FAILED 🔴
   🔄 Running browser retry on 42 error rows...
 ```
 
+**Shopify Theme QA (compare live vs preview):**
+> `/core-web-vitals brandname.com, brandname.com?preview_theme_id=123456789`
+> or: "Compare CWV for brandname.com live vs the preview theme"
+
+```
+⚔️ CWV Comparison: brandname.com vs brandname.com?preview_theme_id=123456789
+
+| Metric       | Live (prod)  | Preview      | Winner     |
+|--------------|-------------|--------------|------------|
+| 📱 M-LCP    | 2.1s 🟢    | 2.8s 🟡    | ✅ Live    |
+| 📱 M-CLS    | 0.05 🟢    | 0.12 🟡    | ✅ Live    |
+| 📱 M-INP    | 150ms 🟢   | 180ms 🟢   | ✅ Live    |
+| ...          |             |              |            |
+
+Overall: Live wins 7/10 metrics ⚠️
+⚠️ Preview theme regressed LCP and CLS — investigate before publishing.
+```
+
+*Use this in your QA workflow: before publishing a Shopify theme, compare the preview against production to catch performance regressions. Any metric going from 🟢 to 🟡/🔴 is a red flag.*
+
 ### Google Sheet Mode
 
 Your Google Sheet must have URLs in **column A** starting at row 2 (row 1 = headers).

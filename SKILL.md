@@ -1,6 +1,6 @@
 ---
 name: core-web-vitals
-description: Run Google Core Web Vitals and PageSpeed audits against URLs. Use when asked to check site performance, CWV scores, LCP/CLS/INP/FCP/TTFB metrics, PageSpeed Insights, compare two sites, or bulk-audit URLs from a Google Sheet. Supports single URL, compare (two URLs side-by-side), batch (multiple URLs), and Google Sheet modes with CrUX field data preferred, lab fallback, and browser scraping for errors.
+description: Run Google Core Web Vitals and PageSpeed audits against URLs. Use when asked to check site performance, CWV scores, LCP/CLS/INP/FCP/TTFB metrics, PageSpeed Insights, compare two sites, compare Shopify preview themes vs production, or bulk-audit URLs from a Google Sheet. Supports single URL, compare (two URLs side-by-side including Shopify theme QA), batch (multiple URLs), and Google Sheet modes with CrUX field data preferred, lab fallback, and browser scraping for errors.
 ---
 
 # Core Web Vitals Skill
