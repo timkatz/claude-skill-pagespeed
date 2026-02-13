@@ -1,6 +1,6 @@
 # Core Web Vitals — Claude Skill
 
-Audit website performance using Google's Core Web Vitals (CrUX field data) and PageSpeed Insights API. Works as a skill for Claude Code, OpenClaw, Codex, or any AI agent that supports SKILL.md.
+Audit website performance using Google's Core Web Vitals (CrUX field data) and [PageSpeed Insights API](https://developers.google.com/speed/docs/insights/v5/get-started). Works as a skill for Claude Code, OpenClaw, Codex, or any AI agent that supports SKILL.md.
 
 ## Features
 
