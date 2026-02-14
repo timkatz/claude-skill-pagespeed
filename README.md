@@ -105,7 +105,7 @@ This is a **simple API key** (not a service account or OAuth credential). No JSO
 
 ### 3. Python 3.8+
 
-No pip dependencies required — uses Python standard library only. Requires `openssl` CLI for service account JWT signing (only for Google Sheets service account auth).
+No pip dependencies required — uses Python standard library only.
 
 ## Usage
 
